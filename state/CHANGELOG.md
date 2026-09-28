@@ -45,6 +45,8 @@
 
 [2026-09-28 14:55:00] [agent] [n/a] 把本轮运维成果提交并推送到公开仓库（origin，见 `git remote -v`）（4 条 ADR、4 份 runbook、13 个脚本、inventory/state 更新）— 结果：推送成功；推送前完成脱敏自检，仓库内不含密钥、令牌、真实 IP 与个人信息 — 回滚：`git revert <sha>` 后重新推送
 
+[2026-09-28 15:00:00] [agent] [test] bt-he1k 例行状态巡检（只读）：新增 `scripts/healthcheck/status.sh`（主机/资源/服务/容器/监听/四套应用/安全基线/补丁 一次看全）— 结果：**整体健康**；0 failed units，四个容器 restarts=0、无 OOM，AstrBot 36 插件 0 失败且 2 个适配器在线，NapCat 双号在连，SillyTavern `healthy`，0 待更新包且无需重启。同时发现三件事：① **`<PUBLIC_DOMAIN>` 经本机 cloudflared + 本会话 SSH 隧道公网直通服务器上的 SillyTavern，且未开认证**（详见 KNOWN-ISSUES #14）；② `/root` 里还留着两个迁移用的 tarball 共 480 MB；③ `/var/log/secure` 里 30 条失败登录其实是本会话早期的用户名试探，另有 3 个境外 IP 扫描（0 成功，全部成功登录均来自运维出口 IP）— 回滚：纯只读巡检，无系统变更
+
 <!-- 新记录追加在此行之上 -->
 
 ---

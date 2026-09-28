@@ -24,6 +24,7 @@
 | --- | --- | --- | --- |
 | [`healthcheck/check-disk.sh`](healthcheck/check-disk.sh) | 磁盘使用率告警（示例示范） | 是 | 无 |
 | [`healthcheck/server-inventory.sh`](healthcheck/server-inventory.sh) | 主机只读盘点：系统/硬件/网络/安全基线/端口/服务/计划任务/宝塔面板/包更新，输出 22 个分区 | 是 | 无（只读） |
+| [`healthcheck/status.sh`](healthcheck/status.sh) | 一页式健康巡检：主机/资源/服务/容器/监听/四套应用/安全基线/补丁，含日志错误与 SSH 尝试统计 | 是 | 无（只读） |
 | [`maintenance/harden-bt-panel.sh`](maintenance/harden-bt-panel.sh) | 宝塔面板加固：开启面板 HTTPS（SHA-256 自签）+ 设置访问 IP 白名单，自动备份与回滚说明 | 是 | 中（白名单写错会挡自己，可用 `bt 13` 复位；SSH 不受影响） |
 | [`maintenance/os-upgrade.sh`](maintenance/os-upgrade.sh) | 以 systemd 瞬态单元脱离 SSH 会话执行 `dnf -y upgrade`，带日志与 `dnf history` 回滚指引 | 是 | 中（内核/glibc 升级需重启；先看 `dnf history` 记下事务号） |
 | [`utils/ssh-bt-he1k.ps1`](utils/ssh-bt-he1k.ps1) | 连 bt-he1k 的执行封装：密钥、known_hosts、脚本投递（gzip+base64，规避 Windows argv 截断） | 是 | 低 |
