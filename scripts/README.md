@@ -43,6 +43,8 @@
 | [`deploy/setup-cloudflared-tunnel.sh`](deploy/setup-cloudflared-tunnel.sh) | 用给定的隧道 ID 与 `主机名=端口` 列表生成 ingress 配置并装成 systemd 服务；**主机名由参数传入，脚本内不含真实域名** | 是 | 中（会重写 `/etc/cloudflared/config.yml` 与 `cloudflared.service`） |
 | [`deploy/st-set-basicauth.sh`](deploy/st-set-basicauth.sh) | 开/关 SillyTavern 的 `basicAuthMode`（凭据用配置里已有的那对，**不回显密码**），重启并验证 401/200 | 是 | 低（改前备份 `config.yaml.pre-auth-*`；`off` 即回滚） |
 | [`deploy/switch-port80-to-sillytavern.sh`](deploy/switch-port80-to-sillytavern.sh) | 把已放行的 80 端口从 AstrBot 改指向 SillyTavern，并标成 `default_server`；**前置检查 `basicAuthMode=true`，否则拒绝执行** | 是 | 中（重写 vhost；备份在 `/root/backups/nginx-LAST`） |
+| [`deploy/setup-st-https.sh`](deploy/setup-st-https.sh) | 给酒馆加 `listen 443 ssl`（不动 80 端口那份）；默认生成自签证书（`SAN_IP`/`SAN_DNS` 由环境变量传入），也支持传入真实证书路径 | 是 | 中（新增 vhost；删文件即回滚） |
+| [`maintenance/disable-bt-status-vhost.sh`](maintenance/disable-bt-status-vhost.sh) | 关掉宝塔自带的 `phpfpm_status.conf`——它的 `allow 127.0.0.1` 不生效，外网带 `Host: 127.0.0.1` 能读到 nginx `stub_status` | 是 | 低（改名即禁用；宝塔升级后需重跑） |
 
 ## 执行约定
 

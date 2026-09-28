@@ -16,7 +16,7 @@
 | [ADR-0001](ADR-0001-windows-ssh-argv-limit.md) | Windows 侧向远端投递脚本的方式（gzip+base64 走 argv） | 已接受 | 2026-09-28 |
 | [ADR-0002](ADR-0002-bt-panel-ua-gate.md) | 探测宝塔面板必须带浏览器 User-Agent | 已接受 | 2026-09-28 |
 | [ADR-0003](ADR-0003-opencloudos-deploy-pitfalls.md) | 往 OpenCloudOS 上部署时踩到的六个坑（moby 互斥 / daemon.json log-driver / BOM 与本地代理 / mv 嵌套 / YAML 缩进静默失效 / CLI 静默不生效） | 已接受 | 2026-09-28 |
-| [ADR-0004](ADR-0004-tencent-domain-block.md) | 这台腾讯云机器不能用「域名」访问 80 端口（未备案域名被网络层拦截） | 已接受 | 2026-09-28 |
+| [ADR-0004](ADR-0004-tencent-domain-block.md) | 这台腾讯云机器不能用「域名」访问 80 / 443 端口（80 未备案被 webblock，443 域名 SNI 直接 RST） | 已接受 | 2026-09-28 |
 
 ## 何时需要写 ADR
 

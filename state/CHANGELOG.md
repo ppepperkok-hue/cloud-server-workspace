@@ -53,6 +53,8 @@
 
 [2026-09-28 21:55:00] [agent] [test] 给手机做「不经 Cloudflare 的直连入口」：安全组只放行 22/80/8888，域名走 80 会被腾讯云拦（ADR-0004），所以唯一可用的公网入口是「**80 端口 + IP**」。先把酒馆的 `basicAuthMode` 打开（`st-set-basicauth.sh`，凭据沿用配置里已有的那对，脚本不回显密码；验证 401 → 带凭据 200），再用 `switch-port80-to-sillytavern.sh` 把 80 端口从 AstrBot 改指向 `127.0.0.1:8000` 并标 `default_server`，原 `astrbot.conf` 停用（AstrBot 改走 `astr.<PUBLIC_DOMAIN>` 隧道 + SSH 隧道 6185）— 结果：**成功**。实测 `http://<TEST_HOST_IP>/` 无凭据 **401**（`WWW-Authenticate: Basic realm="SillyTavern"`）、连接 **19 ms** / TTFB **42 ms**，同一时刻 `https://st.<PUBLIC_DOMAIN>/` 经 Cloudflare 要 **1.286 s**——**直连快约 31 倍**。中途踩到「`:80` 的默认 server 是 `phpfpm_status.conf`（按文件名排序先加载）导致请求落到宝塔『没有找到站点』页」，加 `default_server` 解决 — 回滚：`cp /root/backups/nginx-LAST/*.conf /www/server/panel/vhost/nginx/ && nginx -s reload`；`st-set-basicauth.sh off` 关认证
 
+[2026-09-28 22:20:00] [agent] [test] 443 放行后给酒馆加 HTTPS：确认 443 真的通了（之前探测失败只是因为没人监听），用 `setup-st-https.sh` 生成 **SAN=IP + DNS 的自签证书**（10 年）并加 `sillytavern-ssl.conf`（`listen 443 ssl`，与 80 端口那份互不影响）— 结果：**`https://<TEST_HOST_IP>/` 从外网可用**，建连 18 ms、TTFB 68 ms，401/200 行为与 HTTP 一致，明文那条照旧。**同时实测否掉了「给域名签证书」这条路**：带域名 SNI 的 443 握手被 **RST**（`Recv failure: Connection was reset`），即 443 与 80 一样拦未备案域名，公共 CA 又不给裸 IP 签证书 —— 这台机器上拿不到默认受信任的证书，只能自签或自建 CA，已补进 ADR-0004。**另外发现一个真实的小暴露**：宝塔自带的 `phpfpm_status.conf` 里 `allow 127.0.0.1; deny all;` 没生效，外网带 `Host: 127.0.0.1` 就能读到 nginx `stub_status`；已改名为 `.disabled-by-agent` 并复测（200 → 401），脚本见 `disable-bt-status-vhost.sh` — 回滚：`rm /www/server/panel/vhost/nginx/sillytavern-ssl.conf && nginx -s reload`（HTTP 入口不受影响）；`mv phpfpm_status.conf.disabled-by-agent phpfpm_status.conf` 可还原
+
 <!-- 新记录追加在此行之上 -->
 
 ---
