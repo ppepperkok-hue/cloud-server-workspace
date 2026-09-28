@@ -2,6 +2,8 @@
 
 用于云服务器**调试、部署、维护**的统一工作区。所有 agent 与协作者在此按统一标准协作：信息集中维护、操作全程可追溯、可回滚、可复现。
 
+> 🌐 English: [`README.en.md`](README.en.md) · 许可证：[`LICENSE`](LICENSE) (MIT)
+
 ## 快速开始（新 agent 必读，按顺序）
 
 1. [`AGENTS.md`](AGENTS.md) — 行为宪法，本工作区最高准则。
