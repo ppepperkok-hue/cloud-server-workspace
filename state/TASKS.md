@@ -45,6 +45,7 @@
 | 14 | 打通 AstrBot / NapCat 两个 WebUI 的访问 | test | 2026-09-28 14:00:00 | 成功：AstrBot 走 nginx + IP 白名单（`:80`）；NapCat 两个 WebUI 走 SSH 隧道（本机 6099 / 6100，均 200）。域名方案被腾讯云未备案拦截否掉，落 ADR-0004 |
 | 15 | 把本机 SillyTavern 1.18.0 迁到服务器 | test | 2026-09-28 14:36:00 | 成功：容器 `healthy`，6 角色卡 / 5 聊天记录 / 2 扩展搬全，`http://127.0.0.1:8000/` 200；隧道已扩到 8000；两个静默坑写入 ADR-0003 与 runbook |
 | 16 | 工作区上线前脱敏并推送到公开仓库 | n/a | 2026-09-28 14:55:00 | 成功：107 处真值替换为占位符，`redact-workspace.py --check` 归零；产出脱敏脚本 + 公开仓库提交规范；已提交并推送 |
+| 17 | 把本机 Cloudflare Tunnel 迁到服务器 | test | 2026-09-28 15:37:00 | 成功：5 个业务域名改由服务器上的 `bt-he1k-server` 隧道承载（停掉 Windows 侧仍全通即为判据），`crc` 保留在 Windows 侧；产出两个脚本 + runbook；踩到 `--overwrite-dns` 在旧版静默失效 |
 
 ---
 

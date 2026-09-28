@@ -39,6 +39,8 @@
 | [`deploy/package-sillytavern.py`](deploy/package-sillytavern.py) | 打包本机 SillyTavern 的**用户数据**：config.yaml、data/default-user、cookie-secret、第三方扩展；跳过应用本体与缓存 | 是 | 低（只读源目录） |
 | [`deploy/deploy-sillytavern.sh`](deploy/deploy-sillytavern.sh) | 解包酒馆数据、修正 `config.yaml`（白名单/心跳）、写 compose 并启动 | 是 | 中（替换数据目录，旧数据保留为 `*.pre-<时间戳>`） |
 | [`deploy/st-patch-config.py`](deploy/st-patch-config.py) | 幂等地把 docker 私网段加进 SillyTavern 白名单并设心跳；**按同级条目缩进插入**，避免 YAML 静默失效 | 是 | 低（改前备份 `config.yaml.pre-migration`） |
+| [`deploy/install-cloudflared.sh`](deploy/install-cloudflared.sh) | 下载 cloudflared 静态二进制到 `/usr/local/bin` 并建 `/etc/cloudflared` | 是 | 低（不覆盖已安装的） |
+| [`deploy/setup-cloudflared-tunnel.sh`](deploy/setup-cloudflared-tunnel.sh) | 用给定的隧道 ID 与 `主机名=端口` 列表生成 ingress 配置并装成 systemd 服务；**主机名由参数传入，脚本内不含真实域名** | 是 | 中（会重写 `/etc/cloudflared/config.yml` 与 `cloudflared.service`） |
 
 ## 执行约定
 

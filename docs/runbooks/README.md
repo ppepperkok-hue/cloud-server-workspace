@@ -19,6 +19,7 @@
 | [`harden-bt-panel.md`](harden-bt-panel.md) | 宝塔面板加固：开启 HTTPS + 设置访问 IP 白名单 | test | 2026-09-28 |
 | [`migrate-astrbot.md`](migrate-astrbot.md) | 把本机 AstrBot（插件/配置/数据库）迁移到服务器 Docker，含三个必修项 | test | 2026-09-28 |
 | [`migrate-sillytavern.md`](migrate-sillytavern.md) | 把本机 SillyTavern（酒馆）迁到服务器 Docker，含白名单 403 与扩展层级两个坑 | test | 2026-09-28 |
+| [`migrate-cloudflared-tunnel.md`](migrate-cloudflared-tunnel.md) | 把本机 Cloudflare Tunnel 迁到服务器，含 `--overwrite-dns` 不生效的坑与「停掉本机验证」判据 | test | 2026-09-28 |
 
 ## 建议首批补充的 runbook
 

@@ -14,7 +14,8 @@
 | astrbot | bt-he1k | 6185（仅 127.0.0.1） | HTTP | docker | agent | 4.28.1（`soulter/astrbot:v4.28.1`） | 聊天机器人核心与 WebUI；数据 `/opt/astrbot/data`；经 nginx `:80` 反代 + IP 白名单对外；`restart: unless-stopped` |
 | astrbot-aiocqhttp | bt-he1k | 6199（仅 127.0.0.1） | WebSocket | docker | agent | 4.28.1 | OneBot v11 反向 WS 入口；2026-09-28 已有 2 个连接（两个 QQ 号） |
 | sillytavern | bt-he1k | 8000（仅 127.0.0.1） | HTTP | docker | agent | 1.18.0（`ghcr.io/sillytavern/sillytavern`） | 酒馆；数据 `/opt/sillytavern/{config,data,extensions}`；`whitelistMode=true` 且白名单含 `172.16.0.0/12`（否则代理过来的请求全 403）；**经 SSH 隧道访问** `http://127.0.0.1:8000/` |
-| napcat ×2 | bt-he1k | 6099 / 6100（仅 127.0.0.1） | HTTP | docker | agent | NapCat 4.18.28（`mlikiowa/napcat-docker:latest`） | QQ 协议端，一号一容器：`napcat1` = QQ <QQ_ACCOUNT_A>（<BOT_NICK_A>）、`napcat2` = QQ <QQ_ACCOUNT_B>（<BOT_NICK_B>）；`MODE=astrbot` 自动反向连 `ws://astrbot:6199/ws`；WebUI 只绑本机，**经 SSH 隧道访问**（`scripts/utils/napcat-webui-tunnel.ps1`，理由见 ADR-0004） |
+| napcat ×2 | bt-he1k | 6099 / 6100（仅 127.0.0.1） | HTTP | docker | agent | NapCat 4.18.28（`mlikiowa/napcat-docker:latest`） | QQ 协议端，一号一容器：`napcat1` = QQ <QQ_ACCOUNT_A>（<BOT_NICK_A>）、`napcat2` = QQ <QQ_ACCOUNT_B>（<BOT_NICK_B>）；`MODE=astrbot` 自动反向连 `ws://astrbot:6199/ws`；WebUI 只绑本机，外网经 Cloudflare Tunnel（见下一行）或 SSH 隧道（`scripts/utils/napcat-webui-tunnel.ps1`，理由见 ADR-0004） |
+| cloudflared | bt-he1k | 无监听（纯出站 7844/443） | Cloudflare Tunnel | systemd | agent | 2026.9.3（`/usr/local/bin/cloudflared`） | 具名隧道 `bt-he1k-server`（ID 见 `secrets/cloudflared/`）；ingress 把 `astr.<PUBLIC_DOMAIN>`→6185、`napcat1/2.<PUBLIC_DOMAIN>`→6099/6100、`st.<PUBLIC_DOMAIN>` 与 apex→8000 送到本机回环口。QUIC 部分被拦已自动降级 HTTP2。**`crc.<PUBLIC_DOMAIN>` 不在本隧道**（那是 Windows 侧 app） |
 
 <!--
 端口冲突、服务依赖在这里一眼看全；新增端口必须查这里避免撞端口。

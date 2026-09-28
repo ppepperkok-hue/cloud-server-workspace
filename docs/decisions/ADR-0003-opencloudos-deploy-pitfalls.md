@@ -1,4 +1,4 @@
-# ADR-0003：往 OpenCloudOS 上部署时踩到的五个坑
+# ADR-0003：往 OpenCloudOS 上部署时踩到的六个坑
 
 - **状态**：已接受
 - **日期**：2026-09-28
@@ -62,8 +62,20 @@ Failed to establish a new connection: [Errno 111] Connection refused")
 
 **结论：用代码改 YAML 时，先取出同级条目的真实缩进再复用，改完把原始文本（带可见缩进）打出来核对，别只看「值对不对」。** 同理适用于任何「解析器容忍、语义已变」的结构化配置。
 
+### 6. `cloudflared tunnel route dns --overwrite-dns` 在旧版会静默不覆盖
+
+把 5 条业务域名的 CNAME 从旧隧道改指到服务器上的新隧道，用本机的 **cloudflared 2026.7.3**：
+
+```
+INF <host> is already configured to route to your tunnel tunnelID=<旧隧道ID>
+```
+
+既不覆盖、也不报错，**退出码还是 0**。同一条命令在服务器上的 **2026.9.3** 执行则输出 `Added CNAME <host> which will route to this tunnel` 并真正生效。
+
+**结论：脚本里凡是「改 DNS / 改远端状态」的 CLI，执行后都要回读确认**（本例：再跑一次，看它报的 tunnelID 是新是旧），不能只看退出码。版本差异导致的「成功但没做」最难发现 —— 退出码 0 却什么都没变。
+
 ## 后果
 
-- 上述四条已固化进 [`install-docker.sh`](../../scripts/deploy/install-docker.sh)、[`deploy-astrbot.sh`](../../scripts/deploy/deploy-astrbot.sh) 与 [`migrate-astrbot.md`](../runbooks/migrate-astrbot.md)，不靠人记。
-- 同类「静默成功」的失败（坑 4）比报错的失败危险得多：以后凡是「应用起来了但状态不对」，先怀疑数据目录是不是空的/嵌了一层。
+- 上述坑已固化进 [`install-docker.sh`](../../scripts/deploy/install-docker.sh)、[`deploy-astrbot.sh`](../../scripts/deploy/deploy-astrbot.sh)、[`st-patch-config.py`](../../scripts/deploy/st-patch-config.py) 与 [`migrate-cloudflared-tunnel.md`](../runbooks/migrate-cloudflared-tunnel.md)，不靠人记。
+- 同类「静默成功」的失败（坑 4、坑 6）比报错的失败危险得多：以后凡是「应用起来了但状态不对」，先怀疑数据目录是不是空的/嵌了一层，或者远端状态根本没被改。
 - 迁移类操作统一加一步「迁移后审配置」：路径、代理、端口、时区、BOM。

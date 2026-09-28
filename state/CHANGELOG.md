@@ -47,6 +47,8 @@
 
 [2026-09-28 15:00:00] [agent] [test] bt-he1k 例行状态巡检（只读）：新增 `scripts/healthcheck/status.sh`（主机/资源/服务/容器/监听/四套应用/安全基线/补丁 一次看全）— 结果：**整体健康**；0 failed units，四个容器 restarts=0、无 OOM，AstrBot 36 插件 0 失败且 2 个适配器在线，NapCat 双号在连，SillyTavern `healthy`，0 待更新包且无需重启。同时发现三件事：① **`<PUBLIC_DOMAIN>` 经本机 cloudflared + 本会话 SSH 隧道公网直通服务器上的 SillyTavern，且未开认证**（详见 KNOWN-ISSUES #14）；② `/root` 里还留着两个迁移用的 tarball 共 480 MB；③ `/var/log/secure` 里 30 条失败登录其实是本会话早期的用户名试探，另有 3 个境外 IP 扫描（0 成功，全部成功登录均来自运维出口 IP）— 回滚：纯只读巡检，无系统变更
 
+[2026-09-28 15:37:00] [agent] [test] 把 Cloudflare Tunnel 从本机迁到 bt-he1k：本机原有一个具名隧道（`<TUNNEL_NAME_CRC>`）扛 6 个主机名，其中 5 个的后端早已在服务器上，只有 `crc.<PUBLIC_DOMAIN>`（Codex Remote Contact）是 Windows 独占的 app。做法：服务器装 `cloudflared 2026.9.3`（`install-cloudflared.sh`）；本机 `tunnel create bt-he1k-server` 得新隧道 `<TUNNEL_ID_SERVER>`；`setup-cloudflared-tunnel.sh` 写 ingress（5 条 → 127.0.0.1 的 6185/6099/6100/8000）并装成 `enabled` 的 systemd 服务；用**服务器上的 2026.9.3** 执行 `route dns --overwrite-dns` 把 5 条 CNAME 改指新隧道；Windows 侧 `config.yml` 裁成只剩 `crc` 并重启本机 cloudflared；删掉临时拷到服务器的 `cert.pem` — 结果：**成功**。判据是「把 Windows 侧 cloudflared 整个停掉」——5 个域名仍 200/301（确由服务器承载），`crc` 变 502（确证它仍依赖 Windows）；恢复 Windows 侧后 6 个域名全部 200/301。`systemctl restart cloudflared` 后隧道自动重连、域名照常 — 坑：本机 2026.7.3 的 `--overwrite-dns` **静默不覆盖**（只打印 already configured，退出码仍 0），换 2026.9.3 才真的改掉，已写入 `migrate-cloudflared-tunnel.md` 与 ADR-0003 — 回滚：服务器 `systemctl disable --now cloudflared && rm -rf /etc/cloudflared`；DNS 用 `route dns` 指回旧隧道，Windows 的 `config.yml.pre-migration-backup` 覆盖回去
+
 <!-- 新记录追加在此行之上 -->
 
 ---

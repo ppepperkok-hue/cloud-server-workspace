@@ -13,7 +13,8 @@
 | 11 | AstrBot 容器以 **root** 运行（官方镜像未指定 user），数据目录 root 所有 | 容器内进程逃逸时权限偏高；单体部署影响有限 | 可接受；如需收紧可改 compose 的 `user:` 并同步 chown 数据目录，需先在测试环境验证 AstrBot 兼容性 | 2026-09-28 13:46 | agent |
 | 12 | bt-he1k NapCat 容器的 WebUI（6099/6100）只绑 `127.0.0.1` | 手机/其它设备访问不了；扫码或改配置目前只能在能 SSH 的机器上做 | 已提供 SSH 隧道（`scripts/utils/napcat-webui-tunnel.ps1`，同时转发 6099/6100/**8000**）。要手机直连就必须在腾讯云控制台放行端口，**且不能改用域名走 80 端口**（未备案域名会被网络层拦，见 ADR-0004） | 2026-09-28 13:56 | agent |
 | 13 | bt-he1k SillyTavern 只绑 `127.0.0.1:8000`，且 `basicAuthMode` 仍为 `false` | 只能经 SSH 隧道访问；一旦有人在控制台放行 8000 就会裸奔（SillyTavern 官方明确反对） | 现由隧道保护。若要公网可访问：**先开 `basicAuthMode`**（配置里已有账号密码），再放行端口 | 2026-09-28 14:36 | agent |
-| 14 | **`<PUBLIC_DOMAIN>` 公网直通 SillyTavern，且没有任何认证** | Windows 侧跑着 `cloudflared`，把该域名指到 `localhost:8000`；迁移前指向本机酒馆，现在经本会话的 SSH 隧道指到服务器容器 —— 也就是**任何人知道这个域名就能直接进酒馆**：能看到角色卡与聊天记录，还能借用里面配好的模型 API Key。`hostWhitelist.enabled=false`，只有一条 `Request from untrusted host` 告警，并不拦截。 | 立刻可做：把 `basicAuthMode` 打开（配置里已有账号密码），再重启容器。更彻底：把 `cloudflared` 挪到服务器侧直连 `127.0.0.1:8000`，改由机器自己扛，不再依赖 Windows 机器和临时隧道。**两项都待用户决定** | 2026-09-28 15:00 | agent |
+| 14 | **`<PUBLIC_DOMAIN>` 与 `st.<PUBLIC_DOMAIN>` 公网直通 SillyTavern，且没有任何认证** | 隧道只是把流量送进来，不负责认证。**任何人知道域名就能直接进酒馆**：看角色卡与聊天记录，还能借用里面配好的模型 API Key。`hostWhitelist.enabled=false`，只有一条 `Request from untrusted host` 告警，并不拦截。NapCat 两个 WebUI 同样只靠 URL 里的 token 兜底。 | 立刻可做：把 `basicAuthMode` 打开（配置里已有账号密码）再重启容器。Cloudflare 侧可叠加 Zero Trust Access 做统一登录。**待用户决定** | 2026-09-28 15:00 | agent |
+| 15 | bt-he1k 的 cloudflared 需要**人工维护 DNS**：隧道本身跑得起来，但 `route dns` 要用 Cloudflare **源证书**（`cert.pem`），而它只在本机 | 在服务器上新加域名时，得回 Windows 跑 `cloudflared tunnel route dns`（或再临时拷 `cert.pem` 上去）；本机那份 `cloudflared` 还是 2026.7.3，`--overwrite-dns` 有静默失效的 bug | 现状**接受**：加域名是低频操作。要做的话：升级本机 cloudflared 到 ≥ 2026.9，或申请一个 Cloudflare API Token（`Zone:DNS:Edit`）按需使用，**不建议**把源证书长期放在服务器上 | 2026-09-28 15:37 | agent |
 
 ## 已解决（resolved）
 
