@@ -49,6 +49,8 @@
 
 [2026-09-28 15:37:00] [agent] [test] 把 Cloudflare Tunnel 从本机迁到 bt-he1k：本机原有一个具名隧道（`<TUNNEL_NAME_CRC>`）扛 6 个主机名，其中 5 个的后端早已在服务器上，只有 `crc.<PUBLIC_DOMAIN>`（Codex Remote Contact）是 Windows 独占的 app。做法：服务器装 `cloudflared 2026.9.3`（`install-cloudflared.sh`）；本机 `tunnel create bt-he1k-server` 得新隧道 `<TUNNEL_ID_SERVER>`；`setup-cloudflared-tunnel.sh` 写 ingress（5 条 → 127.0.0.1 的 6185/6099/6100/8000）并装成 `enabled` 的 systemd 服务；用**服务器上的 2026.9.3** 执行 `route dns --overwrite-dns` 把 5 条 CNAME 改指新隧道；Windows 侧 `config.yml` 裁成只剩 `crc` 并重启本机 cloudflared；删掉临时拷到服务器的 `cert.pem` — 结果：**成功**。判据是「把 Windows 侧 cloudflared 整个停掉」——5 个域名仍 200/301（确由服务器承载），`crc` 变 502（确证它仍依赖 Windows）；恢复 Windows 侧后 6 个域名全部 200/301。`systemctl restart cloudflared` 后隧道自动重连、域名照常 — 坑：本机 2026.7.3 的 `--overwrite-dns` **静默不覆盖**（只打印 already configured，退出码仍 0），换 2026.9.3 才真的改掉，已写入 `migrate-cloudflared-tunnel.md` 与 ADR-0003 — 回滚：服务器 `systemctl disable --now cloudflared && rm -rf /etc/cloudflared`；DNS 用 `route dns` 指回旧隧道，Windows 的 `config.yml.pre-migration-backup` 覆盖回去
 
+[2026-09-28 15:55:00] [agent] [test] 排查「酒馆走 Cloudflare 太卡」：实测服务器本地 `/` 响应 **4–23 ms**（应用没问题），而 Cloudflare 隧道的四个连接**全部落在洛杉矶**（`lax01/05/07/10`）、用户侧边缘是**达拉斯**（`CF-RAY: …-DFW`）——香港的机器绕到美国再回来。同一页（brotli 后 84 KB）：SSH 直连 **0.14 s / 590 KB/s**，Cloudflare **1.42 s / 60 KB/s**；423 B 的静态资源直连 0.036 s、Cloudflare 5.14 s。顺带试了 `--region ap` 想钉到亚洲边缘，**该 region 不存在**（`_ap-v2-origintunneld._tcp.argotunnel.com` 解析失败，服务直接起不来），已立刻用备份还原并验证四个域名恢复 — 结果：结论落 KNOWN-ISSUES #16（日常走直连）— 回滚：`/etc/systemd/system/cloudflared.service` 已还原，隧道 `active/enabled`，四个域名全部 200/301
+
 <!-- 新记录追加在此行之上 -->
 
 ---
