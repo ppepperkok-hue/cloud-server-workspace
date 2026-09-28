@@ -4,6 +4,9 @@
 
 > 🌐 English: [`README.en.md`](README.en.md) · 许可证：[`LICENSE`](LICENSE) (MIT)
 
+> ⚠️ **本仓库是公开的。** 所有清单、runbook、ADR、脚本里**只写占位符**（`<TEST_HOST_IP>`、`<OPERATOR_IP>`、`<QQ_ACCOUNT_A>` 之类），真值放在已 gitignore 的 `secrets/redaction-map.json`。
+> **提交前必须跑** `python scripts/utils/redact-workspace.py --check`，细则见 [`docs/inventory/README.md`](docs/inventory/README.md#本仓库是公开的--提交前必须脱敏)。
+
 ## 快速开始（新 agent 必读，按顺序）
 
 1. [`AGENTS.md`](AGENTS.md) — 行为宪法，本工作区最高准则。

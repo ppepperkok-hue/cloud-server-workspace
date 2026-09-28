@@ -15,6 +15,10 @@
 | Runbook | 用途 | 环境 | 最近更新 |
 | --- | --- | --- | --- |
 | [`service-restart.md`](service-restart.md) | 重启单个服务（示例示范） | prod/staging/dev | 2026-02-01 |
+| [`connect-bt-he1k.md`](connect-bt-he1k.md) | 密钥登录测试服务器 bt-he1k（<TEST_HOST_IP>）并验证 | test | 2026-09-28 |
+| [`harden-bt-panel.md`](harden-bt-panel.md) | 宝塔面板加固：开启 HTTPS + 设置访问 IP 白名单 | test | 2026-09-28 |
+| [`migrate-astrbot.md`](migrate-astrbot.md) | 把本机 AstrBot（插件/配置/数据库）迁移到服务器 Docker，含三个必修项 | test | 2026-09-28 |
+| [`migrate-sillytavern.md`](migrate-sillytavern.md) | 把本机 SillyTavern（酒馆）迁到服务器 Docker，含白名单 403 与扩展层级两个坑 | test | 2026-09-28 |
 
 ## 建议首批补充的 runbook
 
