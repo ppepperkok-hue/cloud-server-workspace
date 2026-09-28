@@ -6,7 +6,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | sshd | bt-he1k | 22 | SSH | 无 | agent | OpenSSH 9.3p2-16.oc9 | 仅公钥登录（用户 root）；`PasswordAuthentication no`；密钥对 <TEST_USER> |
 | bt-panel | bt-he1k | 8888 | HTTPS | 无 | agent | 11.8.0（腾讯云专享版） | 访问地址 `https://<TEST_HOST_IP>:8888/<PANEL_ENTRY>`；安全入口 `/<PANEL_ENTRY>`；已启用面板 SSL（自签）+ IP 白名单 `<OPERATOR_IP>`；**必须带浏览器 UA，否则返回 404**（见 ADR-0002）；Bt-Task 常驻 |
-| nginx | bt-he1k | 80 | HTTP | 无 | agent | 1.30.2（宝塔编译安装） | 站点入口 + **AstrBot WebUI 反向代理**（vhost `astrbot.conf`，仅放行白名单来源，其余 403）；`nginx -t` 通过、开机自启 |
+| nginx | bt-he1k | 80 | HTTP | 无 | agent | 1.30.2（宝塔编译安装） | **公网入口 = SillyTavern 反代**（vhost `sillytavern.conf`，`listen 80 default_server`，无 IP 白名单——手机换网就换 IP，认证交给酒馆自己的 basicAuth）；AstrBot 的 `astrbot.conf` 已停用（改走 `astr.<PUBLIC_DOMAIN>` 隧道 + SSH 隧道 6185）。**`default_server` 必须显式写**：否则 `phpfpm_status.conf` 因文件名排序先加载而抢走默认站点 |
 | nginx | bt-he1k | 888 | HTTP | 无 | agent | 1.30.2 | 宝塔默认 phpMyAdmin 占位口（`nginx.conf` 内 `listen 888`），本机返回 404；控制台安全组未放行，外网不可达 |
 | postfix | bt-he1k | 25（仅 127.0.0.1） | SMTP | 无 | agent | OpenCloudOS 自带 | 面板/系统邮件本地投递，未对外暴露 |
 | chronyd | bt-he1k | 323/udp（仅 127.0.0.1） | NTP | 无 | agent | 系统自带 | 时间同步，`NTPSynchronized=yes` |

@@ -41,6 +41,8 @@
 | [`deploy/st-patch-config.py`](deploy/st-patch-config.py) | 幂等地把 docker 私网段加进 SillyTavern 白名单并设心跳；**按同级条目缩进插入**，避免 YAML 静默失效 | 是 | 低（改前备份 `config.yaml.pre-migration`） |
 | [`deploy/install-cloudflared.sh`](deploy/install-cloudflared.sh) | 下载 cloudflared 静态二进制到 `/usr/local/bin` 并建 `/etc/cloudflared` | 是 | 低（不覆盖已安装的） |
 | [`deploy/setup-cloudflared-tunnel.sh`](deploy/setup-cloudflared-tunnel.sh) | 用给定的隧道 ID 与 `主机名=端口` 列表生成 ingress 配置并装成 systemd 服务；**主机名由参数传入，脚本内不含真实域名** | 是 | 中（会重写 `/etc/cloudflared/config.yml` 与 `cloudflared.service`） |
+| [`deploy/st-set-basicauth.sh`](deploy/st-set-basicauth.sh) | 开/关 SillyTavern 的 `basicAuthMode`（凭据用配置里已有的那对，**不回显密码**），重启并验证 401/200 | 是 | 低（改前备份 `config.yaml.pre-auth-*`；`off` 即回滚） |
+| [`deploy/switch-port80-to-sillytavern.sh`](deploy/switch-port80-to-sillytavern.sh) | 把已放行的 80 端口从 AstrBot 改指向 SillyTavern，并标成 `default_server`；**前置检查 `basicAuthMode=true`，否则拒绝执行** | 是 | 中（重写 vhost；备份在 `/root/backups/nginx-LAST`） |
 
 ## 执行约定
 

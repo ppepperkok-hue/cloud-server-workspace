@@ -46,6 +46,7 @@
 | 15 | 把本机 SillyTavern 1.18.0 迁到服务器 | test | 2026-09-28 14:36:00 | 成功：容器 `healthy`，6 角色卡 / 5 聊天记录 / 2 扩展搬全，`http://127.0.0.1:8000/` 200；隧道已扩到 8000；两个静默坑写入 ADR-0003 与 runbook |
 | 16 | 工作区上线前脱敏并推送到公开仓库 | n/a | 2026-09-28 14:55:00 | 成功：107 处真值替换为占位符，`redact-workspace.py --check` 归零；产出脱敏脚本 + 公开仓库提交规范；已提交并推送 |
 | 17 | 把本机 Cloudflare Tunnel 迁到服务器 | test | 2026-09-28 15:37:00 | 成功：5 个业务域名改由服务器上的 `bt-he1k-server` 隧道承载（停掉 Windows 侧仍全通即为判据），`crc` 保留在 Windows 侧；产出两个脚本 + runbook；踩到 `--overwrite-dns` 在旧版静默失效 |
+| 18 | 给手机开一条不经 Cloudflare 的直连入口 | test | 2026-09-28 21:55:00 | 成功：占用已放行的 80 端口反代酒馆 + 开 `basicAuthMode`；`http://<TEST_HOST_IP>/` 401 待登录、TTFB 42 ms，比 Cloudflare 快约 31 倍；踩到 `:80` 默认站点被 `phpfpm_status.conf` 抢走 |
 
 ---
 

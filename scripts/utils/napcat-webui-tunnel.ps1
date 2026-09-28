@@ -13,6 +13,7 @@
         127.0.0.1:6099  ->  server 127.0.0.1:6099   (NapCat instance 1: QQ <QQ_ACCOUNT_A>)
         127.0.0.1:6100  ->  server 127.0.0.1:6100   (NapCat instance 2: QQ <QQ_ACCOUNT_B>)
         127.0.0.1:8000  ->  server 127.0.0.1:8000   (SillyTavern)
+        127.0.0.1:6185  ->  server 127.0.0.1:6185   (AstrBot dashboard)
 
     Leave this window open while you use the WebUIs; Ctrl+C closes the tunnels.
 
@@ -65,6 +66,7 @@ Write-Host '  NapCat + SillyTavern tunnels' -ForegroundColor Cyan
 Write-Host ("    NapCat 1 (QQ account A) : http://127.0.0.1:6099/webui/?token={0}" -f $tok1)
 Write-Host ("    NapCat 2 (QQ account B) : http://127.0.0.1:6100/webui/?token={0}" -f $tok2)
 Write-Host  '    SillyTavern             : http://127.0.0.1:8000/'
+Write-Host  '    AstrBot dashboard       : http://127.0.0.1:6185/'
 Write-Host ''
 Write-Host '  AstrBot dashboard needs no tunnel: http://<TEST_HOST_IP>/' -ForegroundColor DarkGray
 Write-Host '  Keep this window open. Ctrl+C to close the tunnels.' -ForegroundColor DarkGray
@@ -83,6 +85,7 @@ $sshArgs = @(
     '-L', '6099:127.0.0.1:6099'
     '-L', '6100:127.0.0.1:6100'
     '-L', '8000:127.0.0.1:8000'
+    '-L', '6185:127.0.0.1:6185'
     "$User@$HostName"
 )
 

@@ -51,6 +51,8 @@
 
 [2026-09-28 15:55:00] [agent] [test] 排查「酒馆走 Cloudflare 太卡」：实测服务器本地 `/` 响应 **4–23 ms**（应用没问题），而 Cloudflare 隧道的四个连接**全部落在洛杉矶**（`lax01/05/07/10`）、用户侧边缘是**达拉斯**（`CF-RAY: …-DFW`）——香港的机器绕到美国再回来。同一页（brotli 后 84 KB）：SSH 直连 **0.14 s / 590 KB/s**，Cloudflare **1.42 s / 60 KB/s**；423 B 的静态资源直连 0.036 s、Cloudflare 5.14 s。顺带试了 `--region ap` 想钉到亚洲边缘，**该 region 不存在**（`_ap-v2-origintunneld._tcp.argotunnel.com` 解析失败，服务直接起不来），已立刻用备份还原并验证四个域名恢复 — 结果：结论落 KNOWN-ISSUES #16（日常走直连）— 回滚：`/etc/systemd/system/cloudflared.service` 已还原，隧道 `active/enabled`，四个域名全部 200/301
 
+[2026-09-28 21:55:00] [agent] [test] 给手机做「不经 Cloudflare 的直连入口」：安全组只放行 22/80/8888，域名走 80 会被腾讯云拦（ADR-0004），所以唯一可用的公网入口是「**80 端口 + IP**」。先把酒馆的 `basicAuthMode` 打开（`st-set-basicauth.sh`，凭据沿用配置里已有的那对，脚本不回显密码；验证 401 → 带凭据 200），再用 `switch-port80-to-sillytavern.sh` 把 80 端口从 AstrBot 改指向 `127.0.0.1:8000` 并标 `default_server`，原 `astrbot.conf` 停用（AstrBot 改走 `astr.<PUBLIC_DOMAIN>` 隧道 + SSH 隧道 6185）— 结果：**成功**。实测 `http://<TEST_HOST_IP>/` 无凭据 **401**（`WWW-Authenticate: Basic realm="SillyTavern"`）、连接 **19 ms** / TTFB **42 ms**，同一时刻 `https://st.<PUBLIC_DOMAIN>/` 经 Cloudflare 要 **1.286 s**——**直连快约 31 倍**。中途踩到「`:80` 的默认 server 是 `phpfpm_status.conf`（按文件名排序先加载）导致请求落到宝塔『没有找到站点』页」，加 `default_server` 解决 — 回滚：`cp /root/backups/nginx-LAST/*.conf /www/server/panel/vhost/nginx/ && nginx -s reload`；`st-set-basicauth.sh off` 关认证
+
 <!-- 新记录追加在此行之上 -->
 
 ---
