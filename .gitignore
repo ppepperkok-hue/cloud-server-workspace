@@ -1,0 +1,49 @@
+# ---- 密钥与敏感信息（绝不提交）----
+secrets/*
+!secrets/README.md
+!secrets/.gitkeep
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt.private
+id_rsa
+id_ed25519
+*.cred
+*.credentials
+*credentials*.json
+*kubeconfig*
+
+# ---- 日志 ----
+logs/*
+!logs/.gitkeep
+*.log
+
+# ---- 临时与运行时 ----
+tmp/
+*.tmp
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# ---- 备份（大文件，不入库）----
+backups/
+*.bak
+*.backup
+
+# ---- 本机工具/缓存 ----
+.terraform/
+.ansible/
+*.retry
+__pycache__/
+*.pyc
+node_modules/
+.venv/
+venv/
+
+# ---- 编辑器 ----
+.idea/
+.vscode/

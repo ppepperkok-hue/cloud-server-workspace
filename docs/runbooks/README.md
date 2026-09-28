@@ -1,0 +1,24 @@
+# 操作手册（runbooks/）
+
+本目录放**具体任务的分步执行文档**：照着就能做，不用临场想。每条 runbook 是「操作规范 + 实际步骤 + 验证 + 回滚」的组合。
+
+## 规范
+
+- 文件名：`{主题}-{动作}.md`，如 `nginx-reload.md`、`postgres-backup.md`。
+- 每条 runbook 用 [`../../templates/runbook.md`](../../templates/runbook.md) 模板写。
+- 写完在下方索引登记一行。
+- 涉及脚本的，指向 `scripts/` 下的对应脚本，不把脚本内容抄进文档（SSOT）。
+- 每次执行 runbook 后，在 `state/CHANGELOG.md` 追加记录。
+
+## 索引
+
+| Runbook | 用途 | 环境 | 最近更新 |
+| --- | --- | --- | --- |
+| [`service-restart.md`](service-restart.md) | 重启单个服务（示例示范） | prod/staging/dev | 2026-02-01 |
+
+## 建议首批补充的 runbook
+
+- 部署：`deploy-web.md`、`deploy-db.md`
+- 备份恢复：`backup-db.md`、`restore-db.md`
+- 例行：`renew-cert.md`、`rotate-secrets.md`、`os-patch.md`
+- 应急：`service-restart.md`、`failover.md`
