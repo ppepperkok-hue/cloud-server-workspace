@@ -48,6 +48,7 @@
 | 17 | 把本机 Cloudflare Tunnel 迁到服务器 | test | 2026-09-28 15:37:00 | 成功：5 个业务域名改由服务器上的 `bt-he1k-server` 隧道承载（停掉 Windows 侧仍全通即为判据），`crc` 保留在 Windows 侧；产出两个脚本 + runbook；踩到 `--overwrite-dns` 在旧版静默失效 |
 | 18 | 给手机开一条不经 Cloudflare 的直连入口 | test | 2026-09-28 21:55:00 | 成功：占用已放行的 80 端口反代酒馆 + 开 `basicAuthMode`；`http://<TEST_HOST_IP>/` 401 待登录、TTFB 42 ms，比 Cloudflare 快约 31 倍；踩到 `:80` 默认站点被 `phpfpm_status.conf` 抢走 |
 | 19 | 443 放行后给酒馆加 HTTPS | test | 2026-09-28 22:20:00 | 成功（限自签）：`https://<TEST_HOST_IP>/` 可用，建连 18 ms / TTFB 68 ms。**域名签证书这条路被实测否掉**（443 域名 SNI 被 RST，公共 CA 不给裸 IP 签），已补进 ADR-0004；顺带修掉宝塔 `phpfpm_status.conf` 的 `stub_status` 外网暴露 |
+| 21 | NapCat 掉线监控告警（关闭 KNOWN-ISSUES #20 的监控缺口） | test | 2026-09-29 11:45:00 | 成功：探测 napcat2 WebUI 登录态（判据 `isLogin && coreReady && loginPhase=ready`），**经 napcat1 WebUI Debug API 发真实 QQ 告警**（实测 `retcode=0`）。防抖（连续 2 次）、去重（同故障 30 分钟）、恢复通知、失败不静默（退出码 3 + 不记为已告警）、可选每日心跳。**23 项验证全过**，含注入掉线真发告警、抖动保护、发送方失败路径、真实 cron tick。产物：`scripts/healthcheck/{check-napcat-login.sh,install-napcat-alert.sh}` + `docs/runbooks/napcat-drop-alert.md` — 回滚 `rm -f /usr/local/bin/check-napcat-login.sh /etc/cron.d/napcat-alert && rm -rf /var/lib/napcat-alert` |
 
 ---
 
