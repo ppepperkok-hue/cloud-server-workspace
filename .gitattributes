@@ -1,0 +1,28 @@
+# Line endings, stated explicitly so every clone agrees.
+#
+# Why this matters here: the workflow is "edit on Windows, scp to Linux, run with bash".
+# With core.autocrlf=true a fresh Windows clone would materialise every .sh as CRLF, and
+# bash on the server then dies on the first line with `$'\r': command not found` (exit 127)
+# while the file still looks perfectly fine in an editor. Pinning eol=lf removes the trap.
+#
+# The index already stores LF for these files; this just keeps it that way.
+
+* text=auto eol=lf
+*.sh   text eol=lf
+*.ps1  text eol=crlf
+*.py   text eol=lf
+*.md   text eol=lf
+
+# Binary or generated artefacts that must never be line-ending converted.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.gz   binary
+*.tgz  binary
+*.zip  binary
+*.pdf  binary
+*.pem  binary
+*.crt  binary
+*.key  binary
