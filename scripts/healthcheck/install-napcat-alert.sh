@@ -73,15 +73,19 @@ chmod 640 "$LOG_FILE"
 
 echo
 echo "=== cron ==="
+# Every 5 minutes, not every minute: at */1 the script wrote 2 log lines per
+# minute (~2900/day) and filled /var/log/cron with 29666 lines that were all
+# its own. Detection latency of 5 min is fine for a "the bot went quiet" alert.
+# (Changed 2026-10-09; the *script* now self-limits to NAPCAT_ALERT_RUN_TIMEOUT.)
 cat > "$CRON_FILE" <<CRONEOF
 # NapCat login monitor — alerts via napcat1 when napcat2 drops.
 # See docs/runbooks/napcat-drop-alert.md ; script: $DEST_BIN
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
-*/1 * * * * root $DEST_BIN >> $LOG_FILE 2>&1
+*/5 * * * * root $DEST_BIN >> $LOG_FILE 2>&1
 CRONEOF
 chmod 0644 "$CRON_FILE"
-echo "  $CRON_FILE (every minute)"
+echo "  $CRON_FILE (every 5 minutes)"
 
 echo
 echo "=== self test (dry run, sends nothing) ==="

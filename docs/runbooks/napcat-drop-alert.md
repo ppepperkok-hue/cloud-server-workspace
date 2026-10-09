@@ -63,8 +63,8 @@ ssh root@<TEST_HOST_IP> 'bash /tmp/install-napcat-alert.sh /tmp/check-napcat-log
 | `/etc/napcat-alert.env` | 配置（**含 ADMIN_QQ**） | **600** |
 | `/var/lib/napcat-alert/state.json` | 状态与凭据缓存（含 WebUI 会话凭据） | 600（目录 700） |
 | `/var/log/napcat-alert.log` | 运行日志 | 640 |
-| `/etc/cron.d/napcat-alert` | 每分钟执行一次 | 644 |
-| `/var/lock/napcat-alert.lock` | 防止重叠运行 | 600 |
+| `/etc/cron.d/napcat-alert` | 每 5 分钟执行一次 | 644 |
+| `/var/lock/napcat-alert.lock` | 防止重叠运行；单次运行上限 `NAPCAT_ALERT_RUN_TIMEOUT`（默认 **180 s**） | 600 |
 
 ## 4. 日常操作
 
@@ -95,6 +95,7 @@ CONFIRM_FAILURES=1 /usr/local/bin/check-napcat-login.sh --simulate down   # 应�
 | 日志里 `sender login failed` | napcat1 的 WebUI（`127.0.0.1:6099`）不通，或 `webui.json` 里的 token 变了 |
 | 一直报掉线但用户说能用 | `curl` 看 `POST /api/QQLogin/CheckLoginStatus` 的原始返回；可能判定条件与 NapCat 版本行为对不上（见限制） |
 | cron 没跑 | `systemctl status crond`；`/etc/cron.d/napcat-alert` 是否被改名（**带点的文件名会被 cron 忽略**） |
+| **日志一行都不长、`state.json` 的 mtime 也不动** | **先怀疑锁被占住**（2026-09-29 → 10-09 就是这样瞎了 10 天）：`flock -n /var/lock/napcat-alert.lock true && echo FREE \|\| echo HELD`。若 HELD，用 `ps -eo pid,lstart,etime,stat,cmd \| grep napcat-alert` 找出那个活的调用（历史上是一个卡住的 `--simulate`，攥了 10 天 4 小时），`kill` 掉即恢复；脚本现已有 180 s 自带超时，正常不会再发生 |
 
 **手动跑一次看结果**：`/usr/local/bin/check-napcat-login.sh; echo $?`（0 正常；3 = 掉线且告警没发出去）。
 

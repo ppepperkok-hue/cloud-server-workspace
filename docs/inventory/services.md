@@ -51,5 +51,5 @@
 | `/etc/cron.d/yunjing` | 每 30 分钟 + `@reboot` 执行 `YunJing/YDCrontab.sh` | 腾讯云镜主机安全巡检 |
 | `/etc/cron.d/0hourly` | 每小时 `run-parts /etc/cron.hourly` | 系统默认 |
 | `root` crontab | 每 5 分钟拉起 stargate | 腾讯云 stargate |
-| `/etc/cron.d/napcat-alert` | **每 5 分钟**（2026-10-09 由 `*/1` 放宽；原先每分钟 2 行日志 ≈ 2900 行/天，`/var/log/cron` 里 29666 行全是它）执行 `/usr/local/bin/check-napcat-login.sh` | NapCat 掉线告警。**注意该脚本自身已静默失效，见 KNOWN-ISSUES #22** |
+| `/etc/cron.d/napcat-alert` | **每 5 分钟**（2026-10-09 由 `*/1` 放宽；原先每分钟 2 行日志 ≈ 2900 行/天，`/var/log/cron` 里 29666 行全是它）执行 `/usr/local/bin/check-napcat-login.sh` | NapCat 掉线告警（2026-10-09 19:33 修复静默失效并加超时，见 KNOWN-ISSUES #22） |
 | `/www/server/cron/` | 空 | 宝塔面板计划任务（当前 0 条） |

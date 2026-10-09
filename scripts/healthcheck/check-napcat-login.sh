@@ -45,8 +45,18 @@ set -uo pipefail
 # already-shifted "$@" silently dropped every flag (caught by the test suite,
 # where --simulate fell back to probing production state).
 LOCK_FILE="${NAPCAT_ALERT_LOCK_FILE:-/var/lock/napcat-alert.lock}"
+# Hard ceiling on one run. `timeout` MUST wrap the *body* (i.e. sit between flock
+# and bash): on expiry timeout kills the body, flock notices and exits, and the
+# lock is released. Without it a single wedged run holds the exclusive lock
+# forever while every later tick dies instantly and silently on `flock -n` —
+# that is exactly how alerting stayed dead for 10 days (2026-09-29 15:20:46 →
+# 2026-10-09 19:31) without a single log line. See state/KNOWN-ISSUES.md #22.
+RUN_TIMEOUT="${NAPCAT_ALERT_RUN_TIMEOUT:-180}"
 if [ -z "${NAPCAT_ALERT_LOCKED:-}" ] && command -v flock >/dev/null 2>&1; then
     export NAPCAT_ALERT_LOCKED=1
+    if command -v timeout >/dev/null 2>&1; then
+        exec flock -n "$LOCK_FILE" timeout --kill-after=10 "$RUN_TIMEOUT" bash "$0" "$@"
+    fi
     exec flock -n "$LOCK_FILE" bash "$0" "$@"
 fi
 
