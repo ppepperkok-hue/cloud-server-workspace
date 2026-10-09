@@ -9,6 +9,8 @@
     - Keeps known_hosts out of the repo (temp file), so no stray NUL/known_hosts artifacts.
     - With -ScriptPath the script is normalised to LF and shipped via base64 into `bash -s`,
       which avoids all Windows quoting/CRLF problems for multi-line remote scripts.
+      Payloads above ~7 KB of base64 switch to shipping the same payload over STDIN,
+      because ssh.exe silently drops the tail of argv past ~8 KB (ADR-0001).
 
     The caller is responsible for the safety of whatever it runs: this helper does not
     add confirmation prompts. Destructive remote operations still require explicit user
@@ -88,6 +90,7 @@ if (-not (Test-Path -LiteralPath $keyPath)) {
 }
 
 $knownHosts = Join-Path ([System.IO.Path]::GetTempPath()) 'dsh_known_hosts'
+$stdinPayload = $null
 
 $sshArgs = @(
     '-i', $keyPath
@@ -110,7 +113,13 @@ if ($PSCmdlet.ParameterSetName -eq 'Script') {
     #   * piping the script over ssh STDIN is worse: PowerShell rewrites LF to
     #     CRLF, bash sees stray "\r", and the call ends with exit code 127.
     # gzip+base64 is ~2.5x smaller and byte-exact. See ADR-0001.
-    $text = (Get-Content -Raw -LiteralPath $ScriptPath) -replace "`r`n", "`n"
+    # -Encoding UTF8 is load-bearing, not cosmetic. Windows PowerShell 5.1 defaults
+    # Get-Content to the ANSI code page, so a BOM-less UTF-8 script with non-ASCII
+    # text (Chinese comments, for instance) was decoded as GBK. The replacement
+    # fallback at a bad byte boundary then swallows the following ASCII character,
+    # which showed up as `bash: line N: unexpected EOF while looking for matching '"'`
+    # and silently truncated the run partway through.
+    $text = (Get-Content -Raw -Encoding UTF8 -LiteralPath $ScriptPath) -replace "`r`n", "`n"
     if (-not $text.EndsWith("`n")) { $text += "`n" }
 
     $raw = [Text.Encoding]::UTF8.GetBytes($text)
@@ -122,10 +131,16 @@ if ($PSCmdlet.ParameterSetName -eq 'Script') {
     $ms.Dispose()
 
     if ($b64.Length -gt 7000) {
-        throw ("Payload too large: {0} base64 chars (argv limit is ~8000). Split the script or copy it with scp - see docs/decisions/ADR-0001-windows-ssh-argv-limit.md" -f $b64.Length)
+        # Too big for argv (ADR-0001). Stream the very same base64 over STDIN instead:
+        # ssh only allocates a PTY when a terminal is attached, so under a pipeline the
+        # bytes reach the remote command untouched and there is no length limit at all.
+        # PowerShell writes the pipeline out with CRLF, hence tr -d '\r\n' before decode.
+        $remoteCommand = "tr -d '\r\n' | base64 -d | gunzip | bash -s $($ScriptArgs -join ' ')"
+        $stdinPayload  = $b64
     }
-
-    $remoteCommand = "echo $b64 | base64 -d | gunzip | bash -s $($ScriptArgs -join ' ')"
+    else {
+        $remoteCommand = "echo $b64 | base64 -d | gunzip | bash -s $($ScriptArgs -join ' ')"
+    }
 }
 else {
     $remoteCommand = $Command
@@ -137,7 +152,12 @@ else {
 # $ErrorActionPreference must be Continue here or any stderr line from ssh (ssh.exe
 # classifies remote stderr as a NativeCommandError) aborts the script under 'Stop'.
 $ErrorActionPreference = 'Continue'
-$all  = & ssh @sshArgs "$User@$HostName" $remoteCommand 2>&1
+if ($null -ne $stdinPayload) {
+    $all = $stdinPayload | & ssh @sshArgs "$User@$HostName" $remoteCommand 2>&1
+}
+else {
+    $all = & ssh @sshArgs "$User@$HostName" $remoteCommand 2>&1
+}
 $code = $LASTEXITCODE
 foreach ($item in $all) { Write-Output ([string]$item) }
 $global:LASTEXITCODE = $code

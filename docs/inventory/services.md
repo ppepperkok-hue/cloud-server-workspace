@@ -17,6 +17,7 @@
 | sillytavern | bt-he1k | 8000（仅 127.0.0.1） | HTTP | docker | agent | 1.18.0（`ghcr.io/sillytavern/sillytavern`） | 酒馆；数据 `/opt/sillytavern/{config,data,extensions}`；`whitelistMode=true` 且白名单含 `172.16.0.0/12`（否则代理过来的请求全 403）；**经 SSH 隧道访问** `http://127.0.0.1:8000/` |
 | napcat ×2 | bt-he1k | 6099 / 6100（仅 127.0.0.1） | HTTP | docker | agent | NapCat 4.18.28（`mlikiowa/napcat-docker:latest`） | QQ 协议端，一号一容器：`napcat1` = QQ <QQ_ACCOUNT_A>（<BOT_NICK_A>）、`napcat2` = QQ <QQ_ACCOUNT_B>（<BOT_NICK_B>）；`MODE=astrbot` 自动反向连（napcat1 → `ws://astrbot:6199/ws`；napcat2 → `ws://astrbot:6200/ws`，**2026-09-29 由 6199 改**以隔离两个号的会话）；WebUI 只绑本机，外网经 Cloudflare Tunnel（见下一行）或 SSH 隧道（`scripts/utils/napcat-webui-tunnel.ps1`，理由见 ADR-0004） |
 | cloudflared | bt-he1k | 无监听（纯出站 7844/443） | Cloudflare Tunnel | systemd | agent | 2026.9.3（`/usr/local/bin/cloudflared`） | 具名隧道 `bt-he1k-server`（ID 见 `secrets/cloudflared/`）；ingress 把 `astr.<PUBLIC_DOMAIN>`→6185、`napcat1/2.<PUBLIC_DOMAIN>`→6099/6100、`st.<PUBLIC_DOMAIN>` 与 apex→8000 送到本机回环口。QUIC 部分被拦已自动降级 HTTP2。**`crc.<PUBLIC_DOMAIN>` 不在本隧道**（那是 Windows 侧 app） |
+| ops-agent | bt-he1k | 7777（仅 127.0.0.1） | HTTP（JSON） | systemd | agent | 1.0.0（`/opt/ops-agent/ops-agent.py`，纯标准库） | **日常运维通道**：取代「一条命令起一次 `ssh.exe`」（实测 1719 ms → 124 ms）。Bearer token 在 `/etc/ops-agent/token`（本机副本 `secrets/ops-agent-token.txt`）；每请求记 `/var/log/ops-agent/commands.log`。**以 root 运行，token 等价 root 密码**；只绑 loopback，唯一入口是 SSH 隧道。见 ADR-0005 与 `docs/runbooks/ops-agent.md` |
 
 <!--
 端口冲突、服务依赖在这里一眼看全；新增端口必须查这里避免撞端口。
@@ -26,17 +27,17 @@
 
 对外可达（全部绑 `0.0.0.0`，实际能不能连上还取决于腾讯云安全组）：`22/tcp`（sshd）、`80/tcp`（nginx `sillytavern.conf`，`default_server`，→ `127.0.0.1:8000` 酒馆，**basicAuth 一层**；无凭据 401）、`443/tcp`（nginx `sillytavern-ssl.conf`，同一后端，自签证书 SAN = IP + `st.<PUBLIC_DOMAIN>`）、`6185/tcp`（**docker-proxy 直接把 AstrBot 面板发布到全接口**，`http://<TEST_HOST_IP>:6185/` 实测 200）、`888/tcp`（nginx 的 phpMyAdmin 占位口，本机 404）、`8888/tcp`（BT-Panel）。
 
-仅限本机：`127.0.0.1:8000`（酒馆应用本身）、`127.0.0.1:6099` + `6100`（两个 NapCat WebUI）、`127.0.0.1:6199`（aiocqhttp 反向 WS）、`127.0.0.1:25`（postfix）、`127.0.0.1:323` + `[::1]:323`（chronyd）、`127.0.0.1:38787`（containerd）；另有若干 UDP 是 cloudflared 的 QUIC 出站。
+仅限本机：`127.0.0.1:8000`（酒馆应用本身）、`127.0.0.1:6099` + `6100`（两个 NapCat WebUI）、`127.0.0.1:6199` + `6200` + `6201`（aiocqhttp 反向 WS）、`127.0.0.1:7777`（ops-agent）、`127.0.0.1:25`（postfix）、`127.0.0.1:323` + `[::1]:323`（chronyd）、`127.0.0.1:38787`（containerd）；另有若干 UDP 是 cloudflared 的 QUIC 出站。
 
-要从本机访问只绑 loopback 的那几个口，用 `scripts/utils/napcat-webui-tunnel.ps1`（同时转发 6099 / 6100 / 8000 / 6185）。
+要从本机访问只绑 loopback 的那几个口，用 `scripts/utils/napcat-webui-tunnel.ps1`（同时转发 6099 / 6100 / 8000 / 6185 / 7777）。日常运维命令直接点源 `scripts/utils/agent.ps1` 走 7777，不要再逐条起 ssh（ADR-0005）。
 
 > 变更史：2026-09-28 时 `80` 指向 AstrBot、`6185` 只绑 loopback；后因「手机要直连且未备案域名被网络层拦」把 `80`/`443` 让给酒馆（见 ADR-0004），AstrBot 面板改走 `6185`（该改动由其它会话做出，本轮仅复核记录）。
 
 ## 系统服务（bt-he1k）
 
-**运行中**：`sshd` `bt.service` `nginx` `docker` `containerd` `cloudflared` `crond` `chronyd` `postfix` `rsyslog` `NetworkManager` `acpid` `atd` `rngd` `mcelog` `dbus-broker` `systemd-*` `site_total.service`（宝塔站点监控，常驻）`tat_agent.service`（腾讯云自动化助手）`getty@tty1` `serial-getty@ttyS0`
+**运行中**：`sshd` `bt.service` `nginx` `docker` `containerd` `cloudflared` `ops-agent` `crond` `chronyd` `postfix` `rsyslog` `NetworkManager` `acpid` `atd` `rngd` `mcelog` `dbus-broker` `systemd-*` `site_total.service`（宝塔站点监控，常驻）`tat_agent.service`（腾讯云自动化助手）`getty@tty1` `serial-getty@ttyS0`
 
-**开机自启（关键项）**：`sshd` `bt`（sysv 脚本 `/etc/rc.d/init.d/bt`）`nginx`（sysv 脚本，chkconfig 2/3/4/5:on）`docker` `containerd` `cloudflared`（本工作区自建 unit）`crond` `chronyd` `postfix` `rsyslog` `NetworkManager` `cloud-init*` `kdump` `smartd` `sysstat` `multipathd` `lvm2-monitor` `tat_agent`
+**开机自启（关键项）**：`sshd` `bt`（sysv 脚本 `/etc/rc.d/init.d/bt`）`nginx`（sysv 脚本，chkconfig 2/3/4/5:on）`docker` `containerd` `cloudflared`（本工作区自建 unit）`ops-agent`（本工作区自建 unit，2026-10-09）`crond` `chronyd` `postfix` `rsyslog` `NetworkManager` `cloud-init*` `kdump` `smartd` `sysstat` `multipathd` `lvm2-monitor` `tat_agent`
 
 **启动失败**：无。原先的 `ipmi.service`（IPMI Driver，KVM 虚机无硬件、必然失败）已于 2026-09-28 `disable --now` 并 `reset-failed`，`systemctl --failed` 已归零。
 

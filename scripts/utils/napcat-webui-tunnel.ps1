@@ -13,9 +13,15 @@
         127.0.0.1:6099  ->  server 127.0.0.1:6099   (NapCat instance 1: QQ <QQ_ACCOUNT_A>)
         127.0.0.1:6100  ->  server 127.0.0.1:6100   (NapCat instance 2: QQ <QQ_ACCOUNT_B>)
         127.0.0.1:8000  ->  server 127.0.0.1:8000   (SillyTavern)
-        127.0.0.1:6185  ->  server 127.0.0.1:6185   (AstrBot dashboard)
+        127.0.0.1:6185  ->  server 127.0.0.1:6185   (AstrBot dashboard; HTTPS since 2026-10-09)
+        127.0.0.1:7777  ->  server 127.0.0.1:7777   (ops-agent: the fast path for server commands)
 
     Leave this window open while you use the WebUIs; Ctrl+C closes the tunnels.
+
+    The ops-agent tunnel is what makes `.\scripts\utils\agent.ps1` (or rsh.ps1) work:
+    the agent only listens on the server's loopback, so every remote command needs this
+    tunnel up. It costs ~124 ms per command instead of ~1700 ms for a fresh ssh.exe.
+    See docs/decisions/ADR-0005-ops-agent.md and docs/runbooks/ops-agent.md.
 
 .PARAMETER KeyPath
     SSH private key. Defaults to secrets/ssh/lighthouse-he1k.pem inside the workspace.
@@ -24,8 +30,9 @@
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\utils\napcat-webui-tunnel.ps1
 
 .NOTES
-    AstrBot's dashboard does NOT need this - it is already published on port 80 and
-    gated by an IP allowlist:  http://<TEST_HOST_IP>/
+    The AstrBot dashboard also has a public route (port 6185, HTTPS with the shared
+    self-signed certificate; plain HTTP on 80 now redirects to 443) but it is far slower
+    from outside than this tunnel, and the certificate is not trusted - prefer the tunnel.
 #>
 [CmdletBinding()]
 param(
@@ -86,10 +93,12 @@ Write-Host ''
 Write-Host '  NapCat + SillyTavern tunnels' -ForegroundColor Cyan
 Write-Host ("    NapCat 1 (QQ account A) : http://127.0.0.1:6099/webui/?token={0}" -f $tok1)
 Write-Host ("    NapCat 2 (QQ account B) : http://127.0.0.1:6100/webui/?token={0}" -f $tok2)
-Write-Host  '    SillyTavern             : http://127.0.0.1:8000/'
-Write-Host  '    AstrBot dashboard       : http://127.0.0.1:6185/'
+Write-Host  '    SillyTavern             : http://127.0.0.1:8000/  (the app itself is plain HTTP; TLS is terminated by nginx on 443)'
+Write-Host  '    AstrBot dashboard       : https://127.0.0.1:6185/  (self-signed cert; the dashboard terminates TLS itself)'
+Write-Host  '    ops-agent               : http://127.0.0.1:7777/health  (use .\scripts\utils\agent.ps1)'
 Write-Host ''
-Write-Host '  AstrBot dashboard is public: http://<TEST_HOST_IP>:6185/ (plain HTTP; see KNOWN-ISSUES)' -ForegroundColor DarkGray
+Write-Host '  Public routes (slower, self-signed cert): https://<TEST_HOST_IP>/ (SillyTavern), https://<TEST_HOST_IP>:6185/ (AstrBot)' -ForegroundColor DarkGray
+Write-Host '  Plain HTTP on port 80 now 301-redirects to 443. See ADR-0004 and KNOWN-ISSUES.' -ForegroundColor DarkGray
 Write-Host '  Keep this window open. Ctrl+C to close the tunnels.' -ForegroundColor DarkGray
 Write-Host ''
 
@@ -107,6 +116,7 @@ $sshArgs = @(
     '-L', '6100:127.0.0.1:6100'
     '-L', '8000:127.0.0.1:8000'
     '-L', '6185:127.0.0.1:6185'
+    '-L', '7777:127.0.0.1:7777'
     "$User@$HostName"
 )
 
