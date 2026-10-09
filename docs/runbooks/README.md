@@ -20,6 +20,9 @@
 | [`migrate-astrbot.md`](migrate-astrbot.md) | 把本机 AstrBot（插件/配置/数据库）迁移到服务器 Docker，含三个必修项 | test | 2026-09-28 |
 | [`migrate-sillytavern.md`](migrate-sillytavern.md) | 把本机 SillyTavern（酒馆）迁到服务器 Docker，含白名单 403 与扩展层级两个坑 | test | 2026-09-28 |
 | [`migrate-cloudflared-tunnel.md`](migrate-cloudflared-tunnel.md) | 把本机 Cloudflare Tunnel 迁到服务器，含 `--overwrite-dns` 不生效的坑与「停掉本机验证」判据 | test | 2026-09-28 |
+| [`napcat-drop-alert.md`](napcat-drop-alert.md) | NapCat QQ 掉线告警：安装、日常操作、排障（先查锁）、残余风险 | test | 2026-10-09 |
+| [`ops-agent.md`](ops-agent.md) | 服务器常驻执行通道 ops-agent：日常用法、重装换 token、排障与安全须知 | test | 2026-10-09 |
+| [`astrbot-deps.md`](astrbot-deps.md) | AstrBot 插件依赖：换腾讯内网 pip 源、缓存持久化、重建后只能等（#23） | test | 2026-10-09 |
 
 ## 建议首批补充的 runbook
 
