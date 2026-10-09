@@ -62,6 +62,27 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $keyPath  = Join-Path $repoRoot 'secrets\ssh\lighthouse-he1k.pem'
 
+# This repo is public, so the parameter default above is a redaction placeholder.
+# The real values live in the gitignored secrets/redaction-map.json (_real_facts), which
+# is where scripts/utils/redact-workspace.py takes them from. Resolving here means the
+# script still runs with no arguments after a redaction pass.
+function Resolve-WorkspacePlaceholder {
+    param([string]$Value, [string]$Key)
+    if ($Value -notmatch '^<.+>$') { return $Value }
+    $mapPath = Join-Path $repoRoot 'secrets\redaction-map.json'
+    if (-not (Test-Path -LiteralPath $mapPath)) {
+        throw "HostName is still the placeholder '$Value' and $mapPath is missing. Pass -HostName explicitly."
+    }
+    $raw = [System.IO.File]::ReadAllText($mapPath)
+    $m = [regex]::Match($raw, '"' + [regex]::Escape($Key) + '"\s*:\s*"([^"]+)"')
+    if (-not $m.Success) {
+        throw "Could not find '$Key' in $mapPath. Pass -HostName explicitly."
+    }
+    return $m.Groups[1].Value
+}
+
+$HostName = Resolve-WorkspacePlaceholder -Value $HostName -Key 'public_ip'
+
 if (-not (Test-Path -LiteralPath $keyPath)) {
     throw "SSH key not found: $keyPath (see docs/runbooks/connect-bt-he1k.md)"
 }

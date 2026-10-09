@@ -22,15 +22,21 @@
 端口冲突、服务依赖在这里一眼看全；新增端口必须查这里避免撞端口。
 -->
 
-## 网络监听端口（bt-he1k，2026-09-28 13:48 复核）
+## 网络监听端口（bt-he1k，2026-10-09 19:05 复核）
 
-对外可达：`22/tcp`（sshd，0.0.0.0 + ::）、`80/tcp`（nginx → AstrBot WebUI，仅放行白名单来源，其余 403）、`8888/tcp`（BT-Panel，全部接口，已加 IP 白名单）。`888/tcp`（nginx 的 phpMyAdmin 占位口）主机上在听，但腾讯云控制台安全组未放行，客户端实测不可达。仅限本机：`127.0.0.1:6185`（AstrBot WebUI，只经 nginx 反代）、`127.0.0.1:6199`（aiocqhttp 反向 WS）、`127.0.0.1:25`（postfix）、`127.0.0.1:323` + `[::1]:323`（chronyd）、`127.0.0.1:38787`（containerd）。
+对外可达（全部绑 `0.0.0.0`，实际能不能连上还取决于腾讯云安全组）：`22/tcp`（sshd）、`80/tcp`（nginx `sillytavern.conf`，`default_server`，→ `127.0.0.1:8000` 酒馆，**basicAuth 一层**；无凭据 401）、`443/tcp`（nginx `sillytavern-ssl.conf`，同一后端，自签证书 SAN = IP + `st.<PUBLIC_DOMAIN>`）、`6185/tcp`（**docker-proxy 直接把 AstrBot 面板发布到全接口**，`http://<TEST_HOST_IP>:6185/` 实测 200）、`888/tcp`（nginx 的 phpMyAdmin 占位口，本机 404）、`8888/tcp`（BT-Panel）。
+
+仅限本机：`127.0.0.1:8000`（酒馆应用本身）、`127.0.0.1:6099` + `6100`（两个 NapCat WebUI）、`127.0.0.1:6199`（aiocqhttp 反向 WS）、`127.0.0.1:25`（postfix）、`127.0.0.1:323` + `[::1]:323`（chronyd）、`127.0.0.1:38787`（containerd）；另有若干 UDP 是 cloudflared 的 QUIC 出站。
+
+要从本机访问只绑 loopback 的那几个口，用 `scripts/utils/napcat-webui-tunnel.ps1`（同时转发 6099 / 6100 / 8000 / 6185）。
+
+> 变更史：2026-09-28 时 `80` 指向 AstrBot、`6185` 只绑 loopback；后因「手机要直连且未备案域名被网络层拦」把 `80`/`443` 让给酒馆（见 ADR-0004），AstrBot 面板改走 `6185`（该改动由其它会话做出，本轮仅复核记录）。
 
 ## 系统服务（bt-he1k）
 
-**运行中**：`sshd` `bt.service` `nginx` `docker` `containerd` `crond` `chronyd` `postfix` `rsyslog` `NetworkManager` `acpid` `atd` `rngd` `mcelog` `dbus-broker` `systemd-*` `site_total.service`（宝塔站点监控，常驻）`tat_agent.service`（腾讯云自动化助手）`getty@tty1` `serial-getty@ttyS0`
+**运行中**：`sshd` `bt.service` `nginx` `docker` `containerd` `cloudflared` `crond` `chronyd` `postfix` `rsyslog` `NetworkManager` `acpid` `atd` `rngd` `mcelog` `dbus-broker` `systemd-*` `site_total.service`（宝塔站点监控，常驻）`tat_agent.service`（腾讯云自动化助手）`getty@tty1` `serial-getty@ttyS0`
 
-**开机自启（关键项）**：`sshd` `bt`（sysv 脚本 `/etc/rc.d/init.d/bt`）`nginx`（sysv 脚本，chkconfig 2/3/4/5:on）`docker` `containerd` `crond` `chronyd` `postfix` `rsyslog` `NetworkManager` `cloud-init*` `kdump` `smartd` `sysstat` `multipathd` `lvm2-monitor` `tat_agent`
+**开机自启（关键项）**：`sshd` `bt`（sysv 脚本 `/etc/rc.d/init.d/bt`）`nginx`（sysv 脚本，chkconfig 2/3/4/5:on）`docker` `containerd` `cloudflared`（本工作区自建 unit）`crond` `chronyd` `postfix` `rsyslog` `NetworkManager` `cloud-init*` `kdump` `smartd` `sysstat` `multipathd` `lvm2-monitor` `tat_agent`
 
 **启动失败**：无。原先的 `ipmi.service`（IPMI Driver，KVM 虚机无硬件、必然失败）已于 2026-09-28 `disable --now` 并 `reset-failed`，`systemctl --failed` 已归零。
 
@@ -44,4 +50,5 @@
 | `/etc/cron.d/yunjing` | 每 30 分钟 + `@reboot` 执行 `YunJing/YDCrontab.sh` | 腾讯云镜主机安全巡检 |
 | `/etc/cron.d/0hourly` | 每小时 `run-parts /etc/cron.hourly` | 系统默认 |
 | `root` crontab | 每 5 分钟拉起 stargate | 腾讯云 stargate |
+| `/etc/cron.d/napcat-alert` | **每 5 分钟**（2026-10-09 由 `*/1` 放宽；原先每分钟 2 行日志 ≈ 2900 行/天，`/var/log/cron` 里 29666 行全是它）执行 `/usr/local/bin/check-napcat-login.sh` | NapCat 掉线告警。**注意该脚本自身已静默失效，见 KNOWN-ISSUES #22** |
 | `/www/server/cron/` | 空 | 宝塔面板计划任务（当前 0 条） |

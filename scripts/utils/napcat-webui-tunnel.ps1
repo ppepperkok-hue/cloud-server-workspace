@@ -36,8 +36,29 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+
+# This repo is public, so the parameter default above is a redaction placeholder.
+# Resolve it from the gitignored secrets/redaction-map.json so the script still runs
+# with no arguments after a redaction pass.
+function Resolve-WorkspacePlaceholder {
+    param([string]$Value, [string]$Key)
+    if ($Value -notmatch '^<.+>$') { return $Value }
+    $mapPath = Join-Path $repoRoot 'secrets\redaction-map.json'
+    if (-not (Test-Path -LiteralPath $mapPath)) {
+        throw "HostName is still the placeholder '$Value' and $mapPath is missing. Pass -HostName explicitly."
+    }
+    $raw = [System.IO.File]::ReadAllText($mapPath)
+    $m = [regex]::Match($raw, '"' + [regex]::Escape($Key) + '"\s*:\s*"([^"]+)"')
+    if (-not $m.Success) {
+        throw "Could not find '$Key' in $mapPath. Pass -HostName explicitly."
+    }
+    return $m.Groups[1].Value
+}
+
+$HostName = Resolve-WorkspacePlaceholder -Value $HostName -Key 'public_ip'
+
 if (-not $KeyPath) {
-    $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     $KeyPath = Join-Path $repoRoot 'secrets\ssh\lighthouse-he1k.pem'
 }
 if (-not (Test-Path -LiteralPath $KeyPath)) {
@@ -68,7 +89,7 @@ Write-Host ("    NapCat 2 (QQ account B) : http://127.0.0.1:6100/webui/?token={0
 Write-Host  '    SillyTavern             : http://127.0.0.1:8000/'
 Write-Host  '    AstrBot dashboard       : http://127.0.0.1:6185/'
 Write-Host ''
-Write-Host '  AstrBot dashboard needs no tunnel: http://<TEST_HOST_IP>/' -ForegroundColor DarkGray
+Write-Host '  AstrBot dashboard is public: http://<TEST_HOST_IP>:6185/ (plain HTTP; see KNOWN-ISSUES)' -ForegroundColor DarkGray
 Write-Host '  Keep this window open. Ctrl+C to close the tunnels.' -ForegroundColor DarkGray
 Write-Host ''
 
