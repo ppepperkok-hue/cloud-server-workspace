@@ -47,6 +47,15 @@ $ curl --resolve st.<ip>.nip.io:443:<ip> https://st.<ip>.nip.io/
 
 **顺带否掉的另一条**：把域名做成 Cloudflare 的**橙云 A 记录**（不再走隧道）也不行——Cloudflare 回源要么走 80（被拦），要么走 443 带域名 SNI（被 RST）。
 
+## 决策（2026-10-09，用户拍板）：采用**自签证书**
+
+上表两条路里，用户明确选**自签**（不采用「自建 CA + 把根证书装进手机」）——用每次访问点一下「继续」换掉「在每台手机上装并信任根证书」的长期维护成本。落地情况：
+
+- 证书 `/www/server/panel/vhost/cert/sillytavern/{fullchain.pem,privkey.pem}`：`subject = issuer = C=CN, O=bt-he1k, CN=bt-he1k`，`SAN = IP Address:<TEST_HOST_IP>, DNS:st.<PUBLIC_DOMAIN>`，有效期 2026-09-28 → **2036-09-25**（10 年，到期前不必管）。
+- nginx `443`（`sillytavern-ssl.conf`）与 AstrBot 面板 `6185` **共用这一张证书**（面板自己终结 TLS，见 `docs/inventory/services.md`）。
+- `80` 改为 `return 301 https://$host$request_uri;`，这样手机上只需记一个地址、也避免明文传输。
+- 「自建 CA」那条路**保留但未采用**——将来若嫌每次点「继续」麻烦，可随时切过去（改的是同一份证书文件位置）。
+
 ## 备选方案与权衡
 
 | 方案 | 优点 | 缺点 | 结论 |
