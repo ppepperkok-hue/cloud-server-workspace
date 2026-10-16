@@ -1,5 +1,12 @@
 # 云服务器运维工作区
 
+<!-- moe-counter:start -->
+<p align="center">
+  <a href="https://github.com/journey-ad/Moe-Counter"><img src="https://count.getloli.com/get/@ppepperkok-hue.cloud-server-workspace?theme=asoul" alt="README views" width="360" /></a>
+  <br /><sub>README views · Image requests, not unique visitors.</sub>
+</p>
+<!-- moe-counter:end -->
+
 用于云服务器**调试、部署、维护**的统一工作区。所有 agent 与协作者在此按统一标准协作：信息集中维护、操作全程可追溯、可回滚、可复现。
 
 > 🌐 English: [`README.en.md`](README.en.md) · 许可证：[`LICENSE`](LICENSE) (MIT)
