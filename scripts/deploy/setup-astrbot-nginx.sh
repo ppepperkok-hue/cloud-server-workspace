@@ -5,10 +5,17 @@
 # and drops everyone who is not explicitly allowed. This is what keeps a chatbot admin
 # dashboard off the open internet without needing a domain or a certificate.
 #
-# Usage: bash setup-astrbot-nginx.sh [allowed_ip ...]
-#   default allowlist: <OPERATOR_IP> (operator egress IP on 2026-09-28) + 127.0.0.1
+# Usage: bash setup-astrbot-nginx.sh [--dry-run] [allowed_ip ...]
+#   allowed_ip   IPv4 / IPv6 address or CIDR range (203.0.113.7, 198.51.100.0/24, 2001:db8::/48)
+#   no argument  read ASTROBOT_ALLOW_IPS instead (comma- or space-separated, same syntax)
+#   127.0.0.1    always allowed on top of the entries above
+#
+# There is no built-in default entry: this repo is public, so the operator's egress IP
+# (<OPERATOR_IP> on 2026-09-28) is stored nowhere here and must be supplied at run time.
+# A missing or malformed entry aborts the script before anything on the host is touched.
 #
 # Idempotent: rewrites the same vhost file and reloads nginx.
+# Dry run:    bash setup-astrbot-nginx.sh --dry-run <allowed_ip ...>   (renders, writes nothing)
 # Rollback: rm /www/server/panel/vhost/nginx/astrbot.conf ; nginx -s reload
 #           (a timestamped copy of the whole vhost dir is kept under /root/backups/nginx-*)
 
@@ -18,26 +25,120 @@ VHOST_DIR=/www/server/panel/vhost/nginx
 VHOST_FILE="$VHOST_DIR/astrbot.conf"
 NGINX_BIN=/www/server/nginx/sbin/nginx
 UPSTREAM=127.0.0.1:6185
+DRY_RUN=0
 
-if [ "$#" -gt 0 ]; then
-    ALLOW_IPS=("$@")
-else
-    ALLOW_IPS=(<OPERATOR_IP>)
+die() {
+    echo "FATAL: $*" >&2
+    exit 1
+}
+
+usage() {
+    printf '%s\n' "Usage: bash setup-astrbot-nginx.sh [--dry-run] [allowed_ip ...]
+
+  allowed_ip    IPv4/IPv6 address or CIDR range, e.g. 203.0.113.7 or 198.51.100.0/24
+  (none given)  fall back to the ASTROBOT_ALLOW_IPS environment variable
+                (comma- or space-separated, same syntax)
+
+127.0.0.1 is always allowed on top of these entries. There is no default entry:
+the operator's egress IP is not in this public repo, so it has to be supplied
+here, and the script aborts before touching the host if it is missing or invalid.
+
+  -n, --dry-run   validate and print the vhost; write nothing, reload nothing
+  -h, --help      show this help"
+}
+
+# Accept IPv4 / IPv6, optionally with a /prefix. Anything else is refused up front, so a
+# stray value can never end up as an nginx directive (or as a shell redirection).
+is_allow_entry() {
+    local entry=$1 addr=$1 prefix='' octet group n=0
+
+    case "$entry" in
+        '' | *[!0-9A-Fa-f:./]*) return 1 ;;
+    esac
+
+    if [[ $entry == */* ]]; then
+        addr=${entry%%/*}
+        prefix=${entry#*/}
+        [[ $prefix =~ ^[0-9]{1,3}$ ]] || return 1
+    fi
+
+    if [[ $addr == *:* ]]; then
+        # IPv6: at most one "::", 1-4 hex digits per group, 8 groups in total.
+        [[ -z $prefix ]] || [ "$((10#$prefix))" -le 128 ] || return 1
+        [[ $addr == *:::* ]] && return 1
+        [[ $addr == *::*::* ]] && return 1
+        [[ $addr == *: && $addr != *:: ]] && return 1
+        [[ $addr == :* && $addr != ::* ]] && return 1
+        [[ $addr =~ ^[0-9A-Fa-f:]+$ ]] || return 1
+        for group in ${addr//:/ }; do
+            [ "${#group}" -le 4 ] || return 1
+            n=$((n + 1))
+        done
+        if [[ $addr == *::* ]]; then
+            [ "$n" -le 7 ] || return 1
+        else
+            [ "$n" -eq 8 ] || return 1
+        fi
+        return 0
+    fi
+
+    # IPv4: four decimal octets, no leading zeros, each 0-255.
+    [[ -z $prefix ]] || [ "$((10#$prefix))" -le 32 ] || return 1
+    octet='(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])'
+    [[ $addr =~ ^$octet(\.$octet){3}$ ]]
+}
+
+ALLOW_IPS=()
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -n | --dry-run) DRY_RUN=1 ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            ALLOW_IPS+=("$@")
+            break
+            ;;
+        -*) die "unknown option: $1 (see --help)" ;;
+        *) ALLOW_IPS+=("$1") ;;
+    esac
+    shift
+done
+
+if [ "${#ALLOW_IPS[@]}" -eq 0 ] && [ -n "${ASTROBOT_ALLOW_IPS:-}" ]; then
+    # Comma/space separated; empty fields are dropped so "a, , b" is not an error.
+    _raw_ips=()
+    IFS=', ' read -r -a _raw_ips <<< "$ASTROBOT_ALLOW_IPS"
+    for entry in "${_raw_ips[@]}"; do
+        [ -n "$entry" ] && ALLOW_IPS+=("$entry")
+    done
+    unset _raw_ips entry
 fi
 
-[ -d "$VHOST_DIR" ] || { echo "FATAL: BT nginx vhost dir not found: $VHOST_DIR" >&2; exit 1; }
+if [ "${#ALLOW_IPS[@]}" -eq 0 ]; then
+    die "no allowlist entry given. Pass the operator IP explicitly, e.g.:
+    bash $0 203.0.113.7
+  or set ASTROBOT_ALLOW_IPS=203.0.113.7,198.51.100.0/24 (see --help)"
+fi
 
-echo '########## BACKUP ##########'
-BK="/root/backups/nginx-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$BK"
-cp -a "$VHOST_DIR" "$BK/vhost-nginx" 2>/dev/null || true
-cp -a /www/server/nginx/conf/nginx.conf "$BK/" 2>/dev/null || true
-printf '%s\n' "$BK" > /root/backups/nginx-LAST
-echo "  backup at $BK"
+for ip in "${ALLOW_IPS[@]}"; do
+    is_allow_entry "$ip" || die "invalid allowlist entry '$ip': expected an IPv4/IPv6 address or CIDR range"
+    case "$ip" in
+        */0) echo "WARNING: '$ip' matches every address, so the allowlist is effectively open" >&2 ;;
+    esac
+done
 
-echo
-echo '########## WRITE VHOST ##########'
-{
+if [ -d "$VHOST_DIR" ]; then
+    :
+elif [ "$DRY_RUN" -eq 1 ]; then
+    echo "WARNING: $VHOST_DIR not found; dry run continues and writes nothing" >&2
+else
+    die "BT nginx vhost dir not found: $VHOST_DIR"
+fi
+
+render_vhost() {
     echo "# AstrBot dashboard reverse proxy (managed by scripts/deploy/setup-astrbot-nginx.sh)."
     echo "#"
     echo "# - AstrBot binds ${UPSTREAM} only and is never published to the internet."
@@ -75,7 +176,28 @@ echo '########## WRITE VHOST ##########'
     echo "        proxy_buffering off;"
     echo "    }"
     echo "}"
-} > "$VHOST_FILE"
+}
+
+echo
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo '########## RENDER VHOST (dry run: nothing written) ##########'
+    render_vhost
+    echo
+    echo "dry run: $VHOST_FILE untouched, nginx not reloaded"
+    exit 0
+fi
+
+echo '########## BACKUP ##########'
+BK="/root/backups/nginx-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$BK"
+cp -a "$VHOST_DIR" "$BK/vhost-nginx" 2>/dev/null || true
+cp -a /www/server/nginx/conf/nginx.conf "$BK/" 2>/dev/null || true
+printf '%s\n' "$BK" > /root/backups/nginx-LAST
+echo "  backup at $BK"
+
+echo
+echo '########## WRITE VHOST ##########'
+render_vhost > "$VHOST_FILE"
 cat "$VHOST_FILE"
 
 echo
@@ -92,7 +214,11 @@ sleep 3
 echo
 echo '########## VERIFY (on host) ##########'
 echo "  http://127.0.0.1/  -> $(curl -s -o /dev/null -w '%{http_code}' --max-time 8 http://127.0.0.1/ 2>/dev/null)   (expect 200)"
-echo "  http://<TEST_HOST_PRIVATE_IP>/  -> $(curl -s -o /dev/null -w '%{http_code}' --max-time 8 http://<TEST_HOST_PRIVATE_IP>/ 2>/dev/null)   (expect 403: not in allowlist)"
+if [ -n "${TEST_HOST_IP:-}" ]; then
+    echo "  http://${TEST_HOST_IP}/  -> $(curl -s -o /dev/null -w '%{http_code}' --max-time 8 "http://${TEST_HOST_IP}/" 2>/dev/null)   (expect 403: not in allowlist)"
+else
+    echo "  deny path          -> skipped; rerun with TEST_HOST_IP=<host address> in the environment to probe it (expect 403)"
+fi
 echo "  upstream direct    -> $(curl -s -o /dev/null -w '%{http_code}' --max-time 8 http://${UPSTREAM}/ 2>/dev/null)   (expect 200)"
 echo "  astrbot bindings:"
 ss -lntp 2>/dev/null | grep -E ':6185|:6199' | sed 's/^/    /'

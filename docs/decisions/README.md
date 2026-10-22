@@ -17,6 +17,9 @@
 | [ADR-0002](ADR-0002-bt-panel-ua-gate.md) | 探测宝塔面板必须带浏览器 User-Agent | 已接受 | 2026-09-28 |
 | [ADR-0003](ADR-0003-opencloudos-deploy-pitfalls.md) | 往 OpenCloudOS 上部署时踩到的六个坑（moby 互斥 / daemon.json log-driver / BOM 与本地代理 / mv 嵌套 / YAML 缩进静默失效 / CLI 静默不生效） | 已接受 | 2026-09-28 |
 | [ADR-0004](ADR-0004-tencent-domain-block.md) | 这台腾讯云机器不能用「域名」访问 80 / 443 端口（80 未备案被 webblock，443 域名 SNI 直接 RST） | 已接受 | 2026-09-28 |
+| [ADR-0005](ADR-0005-ops-agent.md) | 用 loopback HTTP agent（ops-agent）取代「一次性 SSH」做日常运维通道 | 已接受 | 2026-10-09 |
+| [ADR-0006](ADR-0006-openssl-san-check-portability.md) | 脚本里的证书 SAN 复验要按 OpenSSL 版本走两条路径（`-checkip` 需 3.4+） | 已接受 | 2026-10-21 |
+| [ADR-0007](ADR-0007-powershell-scriptargs-splitting.md) | `-ScriptArgs` 用空格分隔多个参数，逗号不是分隔符 | 已接受 | 2026-10-21 |
 
 ## 何时需要写 ADR
 

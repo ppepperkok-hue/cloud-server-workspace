@@ -22,6 +22,15 @@
 .PARAMETER ScriptPath
     Path to a local bash script to execute on the remote host.
 
+.PARAMETER ScriptArgs
+    Arguments passed to the remote script as positional parameters ($1, $2, ...).
+    Under "powershell -File" PowerShell 5.1 binds the whole value to ONE string,
+    so several arguments have to be separated by whitespace:
+        -ScriptArgs "203.0.113.50 203.0.113.10"
+    Commas are NOT separators: a value that contains a comma stays one argument
+    (the BT panel allowlist is itself a comma-separated list). Every argument is
+    single-quoted for the remote shell.
+
 .PARAMETER User
     SSH user. Default root (the only user bound to the <TEST_USER> key on this host).
 
@@ -130,16 +139,29 @@ if ($PSCmdlet.ParameterSetName -eq 'Script') {
     $b64 = [Convert]::ToBase64String($ms.ToArray())
     $ms.Dispose()
 
+    # Positional arguments for the remote script. PowerShell 5.1 hands us the
+    # whole -ScriptArgs value as ONE string under "-File", so split it on
+    # whitespace here. Commas are deliberately NOT separators: the BT panel
+    # allowlist is itself a comma-separated list and must stay one argument.
+    $remoteArgs = @()
+    foreach ($a in ($ScriptArgs -split '\s+' | Where-Object { $_ -ne '' })) {
+        if ($a.Contains("'") -or $a.Contains('"')) {
+            throw "ScriptArgs value '$a' contains a quote character, which cannot be passed safely to the remote shell."
+        }
+        $remoteArgs += "'" + $a + "'"
+    }
+    $argPart = if ($remoteArgs.Count -gt 0) { ' ' + ($remoteArgs -join ' ') } else { '' }
+
     if ($b64.Length -gt 7000) {
         # Too big for argv (ADR-0001). Stream the very same base64 over STDIN instead:
         # ssh only allocates a PTY when a terminal is attached, so under a pipeline the
         # bytes reach the remote command untouched and there is no length limit at all.
         # PowerShell writes the pipeline out with CRLF, hence tr -d '\r\n' before decode.
-        $remoteCommand = "tr -d '\r\n' | base64 -d | gunzip | bash -s $($ScriptArgs -join ' ')"
+        $remoteCommand = "tr -d '\r\n' | base64 -d | gunzip | bash -s$argPart"
         $stdinPayload  = $b64
     }
     else {
-        $remoteCommand = "echo $b64 | base64 -d | gunzip | bash -s $($ScriptArgs -join ' ')"
+        $remoteCommand = "echo $b64 | base64 -d | gunzip | bash -s$argPart"
     }
 }
 else {
