@@ -8,6 +8,7 @@
 | # | 任务 | 环境 | owner | 开始时间 | 备注 |
 | --- | --- | --- | --- | --- | --- |
 | 20 | 基建换班提醒插件（**已独立成仓 `astrbot_plugin_arknights_shift`**）：Phase 0 立项 + 集成调研 | n/a | agent | 2026-09-29 00:45:00 | 立项与调研文档**已全部迁出本工作区**，见新仓 `docs/`；本工作区只在**部署时**登记 `docs/inventory/services.md` 与 runbook；待用户给三班分界时刻 |
+| 25 | 新增 `.github/workflows/ci.yml` 最小静态 CI（shell / Python / PowerShell 解析与行尾） | n/a | agent | 2026-10-23 01:05:00 | 本机静态校验通过（24 个 `.sh`、4 个 `.py`、4 个 `.ps1`）；**未提交、未推送，尚无远端运行**；首次 push 后需盯首个 run，成功前不写「已完成」，详见 `state/CHANGELOG.md` 2026-10-23 01:05:00 条 |
 
 ## 待办（todo）
 
